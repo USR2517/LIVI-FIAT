@@ -22,6 +22,22 @@
 
 import { EventEmitter } from 'node:events'
 import { decodeFields, decodeVarintValue } from './protoEnc.js'
+import dgram from 'node:dgram'
+
+// --- UDP---
+const udpClient = dgram.createSocket('udp4');
+function sendToPython(eventType: string, data: any) {
+  try {
+    // A 'nav-turn' (image Buffer). 
+    // 
+    const { image, ...safeData } = data || {}; 
+    const msg = Buffer.from(JSON.stringify({ event: eventType, data: safeData }));
+    udpClient.send(msg, 5005, '127.0.0.1');
+  } catch (err) {
+    console.error('[UDP Küldési Hiba]', err);
+  }
+}
+// ----------------------------------------------
 
 export const NAV_MSG = {
   START_INDICATION: 0x8001,
@@ -148,6 +164,7 @@ export class NavigationChannel extends EventEmitter {
             ` side=${t.turnSide} angle=${t.turnAngle} image=${t.image ? `${t.image.length}B` : 'none'}`
         )
         this.emit('nav-turn', t)
+        sendToPython('nav-turn', t)
         break
       }
 
@@ -158,6 +175,7 @@ export class NavigationChannel extends EventEmitter {
             ` display=${d.displayDistanceE3}/${d.displayUnit}`
         )
         this.emit('nav-distance', d)
+        sendToPython('nav-distance', d)
         break
       }
 
@@ -169,6 +187,7 @@ export class NavigationChannel extends EventEmitter {
             ` dest=${JSON.stringify(s.destinationAddress)}`
         )
         this.emit('nav-state', s)
+        sendToPython('nav-state', s)
         break
       }
 
@@ -180,6 +199,7 @@ export class NavigationChannel extends EventEmitter {
             ` ttarr=${p.timeToArrivalSeconds}s step=${p.stepDistanceMeters}m`
         )
         this.emit('nav-position', p)
+        sendToPython('nav-position', p)
         break
       }
 
